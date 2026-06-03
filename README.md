@@ -29,4 +29,3 @@ npm run preview
 The current music analysis is intentionally lightweight and runs fully in the browser. BPM and frequency features are useful for visual direction, but they are not studio-grade analysis yet.
 
 Good next improvements are stronger BPM/onset detection, seek and volume controls, preset editing, performance quality modes, and timeline-aware scene changes for drops or breakdowns.
-// auto-deploy test
