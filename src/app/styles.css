@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Outfit:wght@300;400;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Outfit:wght@300;400;600;700&display=swap");
+@import url("./extra.css");
 
 :root {
   --bg-color: #030108;
@@ -9,8 +10,8 @@
   --accent-glow: #8a2be2;
   --text-primary: #ffffff;
   --text-secondary: #a9a2b5;
-  --font-display: 'Orbitron', sans-serif;
-  --font-body: 'Outfit', sans-serif;
+  --font-display: "Orbitron", sans-serif;
+  --font-body: "Outfit", sans-serif;
 }
 
 * {
@@ -52,7 +53,7 @@ body {
   width: 100%;
   height: 100%;
   background-size: 40px 40px;
-  background-image: 
+  background-image:
     linear-gradient(to right, rgba(138, 43, 226, 0.04) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(138, 43, 226, 0.04) 1px, transparent 1px);
   z-index: 0;
@@ -80,7 +81,7 @@ body {
   padding: 2.5rem;
   width: 90%;
   max-width: 480px;
-  box-shadow: 
+  box-shadow:
     0 8px 32px 0 rgba(0, 0, 0, 0.37),
     0 0 30px rgba(138, 43, 226, 0.1),
     inset 0 0 15px rgba(255, 0, 170, 0.05);
@@ -90,7 +91,7 @@ body {
 
 .glass-panel:hover {
   border-color: rgba(255, 0, 170, 0.3);
-  box-shadow: 
+  box-shadow:
     0 8px 32px 0 rgba(0, 0, 0, 0.45),
     0 0 45px rgba(255, 0, 170, 0.15),
     inset 0 0 20px rgba(0, 245, 212, 0.05);
@@ -133,7 +134,8 @@ h1.title {
   gap: 0.75rem;
 }
 
-.upload-zone:hover, .upload-zone.drag-active {
+.upload-zone:hover,
+.upload-zone.drag-active {
   border-color: var(--secondary-glow);
   background: rgba(0, 245, 212, 0.04);
   box-shadow: 0 0 15px rgba(0, 245, 212, 0.1);
@@ -216,7 +218,11 @@ h1.title {
   border: none;
   border-radius: 12px;
   color: #fff;
-  background: linear-gradient(135deg, var(--primary-glow) 0%, var(--accent-glow) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--primary-glow) 0%,
+    var(--accent-glow) 100%
+  );
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(255, 0, 170, 0.3);
@@ -257,7 +263,11 @@ h1.title {
 
 .loading-bar-inner {
   height: 100%;
-  background: linear-gradient(to right, var(--primary-glow), var(--secondary-glow));
+  background: linear-gradient(
+    to right,
+    var(--primary-glow),
+    var(--secondary-glow)
+  );
   width: 0%;
   transition: width 0.3s ease;
   box-shadow: 0 0 10px var(--primary-glow);
@@ -407,18 +417,31 @@ h1.title {
   width: 18px;
   height: 12px;
   background:
-    linear-gradient(to top, var(--secondary-glow) 0 45%, transparent 45% 100%) 0 100% / 3px 100% no-repeat,
-    linear-gradient(to top, var(--primary-glow) 0 75%, transparent 75% 100%) 5px 100% / 3px 100% no-repeat,
-    linear-gradient(to top, var(--secondary-glow) 0 58%, transparent 58% 100%) 10px 100% / 3px 100% no-repeat,
-    linear-gradient(to top, var(--primary-glow) 0 92%, transparent 92% 100%) 15px 100% / 3px 100% no-repeat;
+    linear-gradient(to top, var(--secondary-glow) 0 45%, transparent 45% 100%) 0
+      100% / 3px 100% no-repeat,
+    linear-gradient(to top, var(--primary-glow) 0 75%, transparent 75% 100%) 5px
+      100% / 3px 100% no-repeat,
+    linear-gradient(to top, var(--secondary-glow) 0 58%, transparent 58% 100%)
+      10px 100% / 3px 100% no-repeat,
+    linear-gradient(to top, var(--primary-glow) 0 92%, transparent 92% 100%)
+      15px 100% / 3px 100% no-repeat;
   filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.45));
   animation: hud-eq 0.74s steps(2, end) infinite;
 }
 
 @keyframes hud-eq {
-  0% { transform: scaleY(0.76); opacity: 0.7; }
-  50% { transform: scaleY(1); opacity: 1; }
-  100% { transform: scaleY(0.84); opacity: 0.8; }
+  0% {
+    transform: scaleY(0.76);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(0.84);
+    opacity: 0.8;
+  }
 }
 
 .btn-back {
@@ -460,7 +483,11 @@ h1.title {
   height: 44px;
   border-radius: 50%;
   border: 1px solid rgba(255, 26, 198, 0.58);
-  background: radial-gradient(circle, rgba(255, 26, 198, 0.45) 0%, rgba(8, 0, 18, 0.82) 72%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 26, 198, 0.45) 0%,
+    rgba(8, 0, 18, 0.82) 72%
+  );
   color: #fff;
   font-size: 1.2rem;
   display: flex;
@@ -525,6 +552,159 @@ h1.title {
   box-shadow:
     0 14px 38px rgba(0, 0, 0, 0.34),
     inset 0 0 14px rgba(0, 229, 255, 0.04);
+}
+
+.hud-right-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+/* Beat indicator / tap-tempo widget */
+.beat-indicator {
+  width: 210px;
+  font-family: var(--font-display);
+  background: rgba(2, 4, 10, 0.62);
+  border: 1px solid rgba(255, 0, 170, 0.22);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem 0.65rem;
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 14px 38px rgba(0, 0, 0, 0.34),
+    inset 0 0 14px rgba(255, 0, 170, 0.05);
+  color: rgba(240, 248, 255, 0.82);
+}
+
+.beat-indicator__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.45rem;
+}
+
+.beat-indicator__label {
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.18em;
+}
+
+.beat-indicator__lock {
+  color: var(--secondary-glow);
+  font-size: 0.6rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  background: rgba(0, 229, 255, 0.06);
+}
+
+.beat-indicator__lock.is-locked {
+  color: #00ffae;
+  border-color: rgba(0, 255, 174, 0.5);
+  background: rgba(0, 255, 174, 0.08);
+  box-shadow: 0 0 8px rgba(0, 255, 174, 0.35);
+}
+
+.beat-indicator__bar {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.55rem;
+}
+
+.beat-indicator__phase {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 229, 255, 0.7),
+    rgba(255, 0, 170, 0.85)
+  );
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.55);
+  border-radius: inherit;
+  transition: width 60ms linear;
+}
+
+.beat-indicator__pulse {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 10px #fff,
+    0 0 18px var(--primary-glow);
+  pointer-events: none;
+  transition:
+    transform 80ms ease-out,
+    opacity 80ms linear;
+}
+
+.beat-indicator__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.beat-indicator__btn {
+  flex: 0 0 auto;
+  height: 28px;
+  min-width: 32px;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 229, 255, 0.32);
+  background: rgba(0, 229, 255, 0.06);
+  color: var(--secondary-glow);
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.beat-indicator__btn:hover {
+  background: rgba(0, 229, 255, 0.18);
+  border-color: var(--secondary-glow);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+
+.beat-indicator__btn--tap {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 0, 170, 0.32),
+    rgba(138, 43, 226, 0.32)
+  );
+  border-color: rgba(255, 0, 170, 0.6);
+  color: #fff;
+  min-width: 48px;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(255, 0, 170, 0.35);
+}
+
+.beat-indicator__btn--tap:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 0, 170, 0.5),
+    rgba(138, 43, 226, 0.5)
+  );
+  box-shadow: 0 0 16px rgba(255, 0, 170, 0.55);
+}
+
+.beat-indicator__bpm {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  color: #fff;
+  letter-spacing: 0.06em;
+  min-width: 64px;
+  text-align: center;
 }
 
 .hud-metrics__top,
@@ -756,6 +936,157 @@ h1.title {
   border-color: var(--primary-glow);
 }
 
+/* Section pill inside the theme badge */
+.hud-section-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.65rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  background: rgba(255, 0, 170, 0.12);
+  color: var(--primary-glow);
+  border: 1px solid rgba(255, 0, 170, 0.4);
+  text-shadow: 0 0 6px rgba(255, 0, 170, 0.45);
+}
+
+.hud-section-pill[data-section="chorus"],
+.hud-section-pill[data-section="drop"] {
+  background: rgba(255, 80, 60, 0.18);
+  color: #ff8a3d;
+  border-color: rgba(255, 138, 61, 0.55);
+  text-shadow: 0 0 6px rgba(255, 138, 61, 0.5);
+}
+
+.hud-section-pill[data-section="build"] {
+  background: rgba(255, 220, 60, 0.12);
+  color: #ffdc3c;
+  border-color: rgba(255, 220, 60, 0.45);
+  text-shadow: 0 0 6px rgba(255, 220, 60, 0.4);
+}
+
+.hud-section-pill[data-section="breakdown"],
+.hud-section-pill[data-section="intro"],
+.hud-section-pill[data-section="outro"] {
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--secondary-glow);
+  border-color: rgba(0, 229, 255, 0.42);
+  text-shadow: 0 0 5px rgba(0, 229, 255, 0.4);
+}
+
+/* Bottom HUD row — waveform panel */
+.hud-bottom {
+  width: 100%;
+  pointer-events: auto;
+  margin-top: 0.75rem;
+}
+
+.waveform-panel {
+  background: rgba(2, 4, 10, 0.62);
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  border-radius: 12px;
+  padding: 0.45rem 0.7rem 0.55rem;
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 14px 38px rgba(0, 0, 0, 0.34),
+    inset 0 0 14px rgba(0, 229, 255, 0.04);
+  font-family: var(--font-display);
+  color: rgba(240, 248, 255, 0.78);
+}
+
+.waveform-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.waveform-panel__legend {
+  display: flex;
+  gap: 0.85rem;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  align-items: center;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  margin-right: 0.3rem;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.legend-swatch--wave {
+  background: rgba(0, 229, 255, 0.85);
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.45);
+}
+
+.legend-swatch--beat {
+  background: rgba(255, 80, 200, 0.85);
+  box-shadow: 0 0 6px rgba(255, 80, 200, 0.45);
+}
+
+.legend-swatch--spec {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 229, 255, 0.85),
+    rgba(255, 0, 170, 0.7)
+  );
+}
+
+.waveform-panel__canvas {
+  width: 100%;
+  height: 72px;
+  display: block;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(0, 229, 255, 0.12);
+}
+
+/* Recording button (active state) */
+.btn-tuner.is-recording {
+  border-color: rgba(255, 50, 80, 0.7);
+  color: #ff5070;
+  background: rgba(255, 50, 80, 0.18);
+  box-shadow: 0 0 14px rgba(255, 50, 80, 0.45);
+  animation: pulse-rec 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-rec {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Photosensitive toggle (active state) */
+.btn-tuner.is-safe {
+  border-color: rgba(0, 255, 174, 0.7);
+  color: #00ffae;
+  background: rgba(0, 255, 174, 0.18);
+  box-shadow: 0 0 14px rgba(0, 255, 174, 0.4);
+}
+
+@media (max-width: 700px) {
+  .hud-bottom {
+    left: 0.75rem;
+    right: 0.75rem;
+  }
+  .waveform-panel__legend {
+    display: none;
+  }
+}
+
 @media (max-width: 700px) {
   .tuner-panel {
     top: 4.6rem;
@@ -772,6 +1103,11 @@ h1.title {
 
 /* Animations */
 @keyframes pulse-opacity {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }

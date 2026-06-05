@@ -1,0 +1,412 @@
+/* Extra component styles layered on top of the original styles.css */
+
+.canvas-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: var(--text-primary);
+  z-index: 2;
+}
+.canvas-loading__spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--secondary-glow);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+.canvas-loading__text {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-boundary {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: var(--text-primary);
+  padding: 2rem;
+  text-align: center;
+  background: var(--bg-color);
+  z-index: 10;
+}
+.error-boundary h2 {
+  font-family: var(--font-display);
+  color: var(--primary-glow);
+  letter-spacing: 0.1em;
+}
+
+.debug-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 50;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--secondary-glow);
+  background: rgba(4, 0, 12, 0.55);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  pointer-events: none;
+  line-height: 1.4;
+}
+
+.seek-volume {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 460px;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.seek-volume__seek {
+  flex: 1 1 auto;
+}
+.seek-volume__vol {
+  width: 90px;
+}
+.seek-volume__time {
+  min-width: 36px;
+  text-align: center;
+}
+.seek-volume__mute {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+.seek-volume__mute.is-muted {
+  color: var(--primary-glow);
+}
+
+.shortcut-help {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+}
+.shortcut-help__panel {
+  background: rgba(7, 11, 20, 0.92);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 14px;
+  padding: 1.5rem 2rem;
+  min-width: 320px;
+  color: var(--text-primary);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+}
+.shortcut-help__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.shortcut-help__header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+  color: var(--secondary-glow);
+}
+.shortcut-help__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.shortcut-help__list li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+.shortcut-help__list kbd {
+  font-family: var(--font-display);
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* ============================================================================
+   Auto-hide HUD overlay
+   ============================================================================ */
+.hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center; /* children default to center, not stretch */
+  padding: 1.5rem;
+}
+
+/* Top row: distribute the back / badge / right-stack horizontally */
+.hud-overlay > .hud-top-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Make sure the auto-hide child elements stay sized correctly
+   instead of stretching to the full container width. */
+.hud-overlay .hud-theme-badge {
+  align-self: center;
+}
+.hud-overlay .hud-right-stack {
+  align-self: flex-end;
+}
+.hud-overlay .btn-back--always {
+  align-self: flex-start;
+}
+.hud-overlay .hud-bottom {
+  align-self: stretch; /* full-width at the bottom */
+}
+.hud-overlay .hud-controls {
+  align-self: center;
+}
+
+/* When the HUD is idle, fade out every child except the always-on Back
+   button.  We use opacity + pointer-events so the scene gets clicks. */
+.hud-overlay.is-hidden .hud-theme-badge,
+.hud-overlay.is-hidden .hud-right-stack,
+.hud-overlay.is-hidden .hud-controls,
+.hud-overlay.is-hidden .hud-bottom {
+  opacity: 0;
+  transform: translateY(0) scale(0.96);
+  pointer-events: none;
+}
+.hud-overlay .hud-theme-badge,
+.hud-overlay .hud-right-stack,
+.hud-overlay .hud-controls,
+.hud-overlay .hud-bottom {
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s ease,
+    filter 0.5s ease;
+  filter: blur(0);
+}
+.hud-overlay .hud-theme-badge.is-fading,
+.hud-overlay .hud-right-stack.is-fading,
+.hud-overlay .hud-controls.is-fading,
+.hud-overlay .hud-bottom.is-fading {
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(2px);
+}
+
+/* The Back button is always visible and tappable so the user is never
+   trapped in the tunnel. */
+.btn-back--always {
+  align-self: flex-start;
+  font-size: 0.7rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(4, 0, 12, 0.5);
+  opacity: 0.55;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
+}
+.btn-back--always:hover {
+  opacity: 1;
+}
+
+/* ============================================================================
+   Compact LiveHUD variants
+   ============================================================================ */
+.hud-metrics--compact {
+  width: 150px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.7rem;
+}
+.hud-metrics--compact .hud-metrics__top {
+  font-size: 0.62rem;
+  margin-bottom: 0.2rem;
+}
+.hud-metrics--compact .metric-bar {
+  margin-top: 0.22rem;
+}
+.hud-metrics--compact .metric-bar__head {
+  font-size: 0.58rem;
+}
+.hud-metrics--compact .hud-metrics__state {
+  font-size: 0.58rem;
+  margin-bottom: 0.2rem;
+}
+
+.hud-collapse-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.hud-collapse-btn:hover {
+  color: var(--secondary-glow);
+  border-color: var(--secondary-glow);
+}
+
+/* The collapsed "pill" is a one-line readout in the top-right corner. */
+.hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(4, 0, 12, 0.55);
+  border: 1px solid rgba(0, 229, 255, 0.32);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--secondary-glow);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(12px);
+}
+.hud-pill:hover {
+  border-color: var(--secondary-glow);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+}
+.hud-pill__bpm {
+  color: #fff;
+  font-weight: 700;
+}
+.hud-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--secondary-glow);
+  box-shadow: 0 0 6px var(--secondary-glow);
+}
+.hud-pill__label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+}
+
+/* ============================================================================
+   Minimal central control dock
+   ============================================================================ */
+.hud-controls--minimal {
+  align-self: center;
+  padding: 0.4rem 0.7rem;
+  gap: 0.4rem;
+  background: rgba(4, 0, 12, 0.6);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 999px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.5);
+}
+.btn-tuner--sm {
+  height: 28px;
+  min-width: 38px;
+  padding: 0 0.55rem;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+}
+.btn-circle--sm {
+  width: 32px;
+  height: 32px;
+  font-size: 0.9rem;
+}
+
+/* ============================================================================
+   HUD hint (small "press H" reminder)
+   ============================================================================ */
+.hud-hint {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 60;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.42);
+  pointer-events: none;
+  background: rgba(4, 0, 12, 0.4);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(6px);
+  animation: hud-hint-pulse 3.2s ease-in-out infinite;
+}
+.hud-hint kbd {
+  display: inline-block;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.6rem;
+  margin: 0 0.2rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+@keyframes hud-hint-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ============================================================================
+   Smaller waveform panel (when shown via W key)
+   ============================================================================ */
+.hud-bottom {
+  width: 100%;
+  pointer-events: auto;
+  margin-top: 0.75rem;
+}
+.hud-bottom .waveform-panel {
+  padding: 0.3rem 0.6rem 0.4rem;
+  font-size: 0.6rem;
+}
+.hud-bottom .waveform-panel__canvas {
+  height: 48px;
+}
