@@ -5,6 +5,7 @@ import { gsap } from 'gsap';
 import { currentColorOffset } from '../audio/AudioEngine';
 import { useVibeStore } from '../store/useVibeStore';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
+import { bpmAnchoredSpeed } from '../audio/beatSync';
 import { pulseScale as gsapPulseScale } from '../utils/gsapHelpers';
 import {
   getBeatTurnVector,
@@ -175,7 +176,7 @@ export default function TunnelFrames() {
       gsapPulseScale(groupRef.current, 1 + config.tunnel.pulseStrength * 0.22, 0.08);
     }
 
-    const baseSpeed = config.tunnel.speed * 8;
+    const baseSpeed = bpmAnchoredSpeed(audio.bpm, config.tunnel.speed, spacing);
     const currentSpeed = baseSpeed + audio.energy * 5 * reactivity.energyToSpeed;
     const colors = [
       visualConfig.palette.primary,

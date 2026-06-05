@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { currentColorOffset } from '../audio/AudioEngine';
 import { useVibeStore } from '../store/useVibeStore';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
+import { bpmAnchoredSpeed } from '../audio/beatSync';
 import { getTunnelPathPoint } from './tunnelPath';
 
 const BAR_COUNT_PER_SIDE = 22;
@@ -41,7 +42,7 @@ export default function EqualizerBars() {
     if (!isPlaying) return;
 
     const { audio, config } = getReactiveVisualState(visualConfig, useVibeStore.getState().musicProfile?.bpm);
-    const speed = 3 + config.equalizer.movementSpeed * 10 + audio.energy * 5;
+    const speed = bpmAnchoredSpeed(audio.bpm, config.equalizer.movementSpeed * 0.7, 1) + audio.energy * 3;
 
     barRefs.current.forEach((bar, idx) => {
       const item = layout[idx];

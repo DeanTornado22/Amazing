@@ -5,6 +5,7 @@ import { currentColorOffset } from '../audio/AudioEngine';
 import { useVibeStore } from '../store/useVibeStore';
 import type { VisualConfig } from '../visual/VisualConfig';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
+import { bpmAnchoredSpeed } from '../audio/beatSync';
 import { getTunnelPathPoint } from './tunnelPath';
 
 const LASER_COUNT = 14;
@@ -41,7 +42,7 @@ export default function LaserBeams() {
     if (!isPlaying) return;
 
     const { audio, config } = getReactiveVisualState(visualConfig, useVibeStore.getState().musicProfile?.bpm);
-    const speed = 4 + config.lasers.speed * 12 + audio.energy * 7 * config.reactivity.energyToSpeed;
+    const speed = bpmAnchoredSpeed(audio.bpm, config.lasers.speed, 1) + audio.energy * 4 * config.reactivity.energyToSpeed;
 
     beamRefs.current.forEach((beam, idx) => {
       beam.visible = idx < config.lasers.count;

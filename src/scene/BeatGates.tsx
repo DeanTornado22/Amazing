@@ -1,27 +1,22 @@
-import { useRef, useMemo } from 'react';
+import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { currentColorOffset } from '../audio/AudioEngine';
 import { useVibeStore } from '../store/useVibeStore';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
+import { bpmAnchoredSpeed } from '../audio/beatSync';
 
 export default function BeatGates() {
   const { visualConfig } = useVibeStore();
-  
+
   const gateGroupRef = useRef<THREE.Group>(null);
   const leftGateRef = useRef<THREE.Group>(null);
   const rightGateRef = useRef<THREE.Group>(null);
-  
+
   const lastGateTriggerIndex = useRef(-1);
   const hasSplit = useRef(false);
   const isGateActive = useRef(false);
-  
-  // Set up gate speed matching tunnel speed
-  const gateSpeed = useMemo(() => {
-    if (!visualConfig) return 15;
-    return visualConfig.tunnel.speed * 8;
-  }, [visualConfig]);
 
   useFrame((_, delta) => {
     if (!visualConfig || !gateGroupRef.current) return;
@@ -30,7 +25,9 @@ export default function BeatGates() {
     if (!isPlaying) return;
 
     const { audio, config } = getReactiveVisualState(visualConfig, useVibeStore.getState().musicProfile?.bpm);
-    const currentSpeed = gateSpeed + audio.energy * 6 * config.reactivity.energyToSpeed;
+    // Gate speed locked to BPM so the gate crosses the camera on a beat.
+    const baseGateSpeed = bpmAnchoredSpeed(audio.bpm, config.tunnel.speed, 3.8);
+    const currentSpeed = baseGateSpeed + audio.energy * 6 * config.reactivity.energyToSpeed;
 
     // 1. Detect 32-beat index changes to spawn a gate
     const beatIndex = audio.beatIndex;

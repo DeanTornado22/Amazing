@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useVibeStore } from '../store/useVibeStore';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
+import { bpmAnchoredSpeed } from '../audio/beatSync';
 import { getTunnelPathPoint } from './tunnelPath';
 
 export default function ParticleField() {
@@ -51,9 +52,9 @@ export default function ParticleField() {
     const positionAttribute = geometry.getAttribute('position') as THREE.BufferAttribute;
     const array = positionAttribute.array as Float32Array;
 
-    const baseSpeed = 8 + config.particles.speed * 12;
+    const baseSpeed = bpmAnchoredSpeed(audio.bpm, config.particles.speed * 1.5, 1) + 2;
     const beatBurst = audio.kick ? 8 * config.particles.beatBurstStrength : audio.beat ? 3 * config.particles.beatBurstStrength : 0;
-    const currentSpeed = baseSpeed + audio.energy * 22 * reactivity.energyToSpeed + beatBurst;
+    const currentSpeed = baseSpeed + audio.energy * 14 * reactivity.energyToSpeed + beatBurst;
 
     for (let i = 0; i < count; i++) {
       const xIdx = i * 3;

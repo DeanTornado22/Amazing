@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useVibeStore } from '../store/useVibeStore';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
+import { beatSurpriseState } from '../audio/beatSurpriseState';
 import { currentTunnelPath, getTunnelPathPoint, getTunnelPathRoll } from './tunnelPath';
 
 const CAMERA_PATH_Z = 4.8;
@@ -82,7 +83,7 @@ export default function CameraRig() {
 
     const bank = new THREE.Quaternion().setFromAxisAngle(
       new THREE.Vector3(0, 0, 1),
-      pathRoll - lookPathPoint.x * 0.035 - pointer.x * 0.025 * sway + Math.sin(customTime.current * 0.9) * 0.012
+      pathRoll - lookPathPoint.x * 0.035 - pointer.x * 0.025 * sway + Math.sin(customTime.current * 0.9) * 0.012 + beatSurpriseState.cameraRoll
     );
     targetQuat.current.multiply(bank);
     camera.quaternion.slerp(targetQuat.current, 0.1);
@@ -90,7 +91,11 @@ export default function CameraRig() {
     // Dynamic FOV pulse + sharp transient beat zooms
     const fovBase = 78;
     const fovPulse = audio.bass * 1.4 * config.camera.fovPulse * reactivity.bassToCamera;
-    
+
+    // Beat-synced "breathing" — a soft sinusoidal FOV nudge on the beat phase
+    // so every beat boundary produces a tiny in/out motion, even at low energy.
+    const phaseFov = Math.sin(audio.beatPhase * Math.PI * 2) * 0.6 * config.camera.fovPulse;
+
     // Add additional sharp zoom contraction on beats
     let beatFov = 0;
     if (audio.kick) {
@@ -98,10 +103,16 @@ export default function CameraRig() {
     } else if (audio.beat) {
       beatFov = config.camera.beatZoomStrength * 0.45 * audio.beatStrength;
     }
-    
-    const targetFov = fovBase + fovPulse + beatFov + morphIntensity * 2.2 * (0.5 + reactivity.midsToTurns * 0.5);
+
+    // Beat-surprise FOV punch — sharp inward zoom on the beat boundary.
+    // This is what makes every beat feel like the camera "hits" something.
+    const punchFov = beatSurpriseState.fovPunch * 9;
+
+    const targetFov =
+      fovBase + fovPulse + phaseFov + beatFov + punchFov +
+      morphIntensity * 2.2 * (0.5 + reactivity.midsToTurns * 0.5);
     if (camera instanceof THREE.PerspectiveCamera) {
-      camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.18);
+      camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.28);
       camera.updateProjectionMatrix();
     }
   });

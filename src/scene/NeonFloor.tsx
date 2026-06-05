@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useVibeStore } from '../store/useVibeStore';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
+import { bpmAnchoredSpeed } from '../audio/beatSync';
 
 const LINE_COUNT = 34;
 const SIDE_LINE_COUNT = 7;
@@ -47,10 +48,9 @@ export default function NeonFloor() {
     if (!isPlaying) return;
 
     const { audio, config } = getReactiveVisualState(visualConfig, useVibeStore.getState().musicProfile?.bpm);
-    const speed =
-      8 +
-      config.tunnel.speed * 6 +
-      config.floor.gridSpeed * 8;
+    // Floor grid motion locked to BPM. At speed=1, a new line crosses the
+    // camera exactly on each beat. energy adds a small additional surge.
+    const speed = bpmAnchoredSpeed(audio.bpm, config.tunnel.speed * 1.2, 1) + config.floor.gridSpeed * 4;
     const beatFlash = audio.kick ? 1 : audio.beat ? 0.45 : 0;
     const pulse = config.floor.brightness + audio.bass * config.floor.bassPulseStrength + beatFlash * 0.12;
 

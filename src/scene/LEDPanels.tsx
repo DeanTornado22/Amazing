@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { currentColorOffset } from '../audio/AudioEngine';
 import { useVibeStore } from '../store/useVibeStore';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
+import { bpmAnchoredSpeed } from '../audio/beatSync';
 import { getTunnelPathPoint } from './tunnelPath';
 
 const PANEL_COUNT = 8;
@@ -32,7 +33,7 @@ export default function LEDPanels() {
 
     const { audio, config } = getReactiveVisualState(visualConfig, useVibeStore.getState().musicProfile?.bpm);
     const visiblePanels = config.preset === 'minimal' ? 2 : config.preset === 'club' ? 5 : PANEL_COUNT;
-    const speed = 3 + config.tunnel.speed * 2.2 + audio.energy * 4;
+    const speed = bpmAnchoredSpeed(audio.bpm, config.tunnel.speed * 0.4, 1) + audio.energy * 2;
 
     panelRefs.current.forEach((panel, idx) => {
       panel.visible = idx < visiblePanels;

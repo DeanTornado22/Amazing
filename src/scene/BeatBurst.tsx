@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { useVibeStore } from '../store/useVibeStore';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
 import { getTunnelPathPoint } from './tunnelPath';
+import { readBeatPhase, bpmAnchoredSpeed } from '../audio/beatSync';
 
 const BURST_COUNT = 96;
 const FALLBACK_BURST_LIFETIME = 0.35;
@@ -55,7 +56,14 @@ export default function BeatBurst() {
       lastBeatRef.current = audio.beatIndex;
       ageRef.current = 0;
 
-      const center = getTunnelPathPoint(-18);
+      // Spawn the burst at a Z chosen so it reaches the camera exactly
+      // when the next beat boundary arrives. We look up how much time
+      // remains until the next beat, then back-calculate the Z distance
+      // the camera will travel in that time at the current forward speed.
+      const { secondsToNextBeat } = readBeatPhase();
+      const camSpeed = bpmAnchoredSpeed(audio.bpm, config.tunnel.speed, 3.8) + audio.energy * 5;
+      const spawnZ = -secondsToNextBeat * camSpeed - 4;
+      const center = getTunnelPathPoint(spawnZ);
       for (let i = 0; i < BURST_COUNT; i++) {
         array[i * 3] = center.x;
         array[i * 3 + 1] = center.y;

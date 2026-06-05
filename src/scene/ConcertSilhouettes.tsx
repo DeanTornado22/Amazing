@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useVibeStore } from '../store/useVibeStore';
 import { getReactiveVisualState } from '../visual/deriveReactiveConfig';
+import { bpmAnchoredSpeed } from '../audio/beatSync';
 import { getTunnelPathPoint } from './tunnelPath';
 
 const SPEAKER_ZS = [-11, -29, -47];
@@ -25,7 +26,7 @@ export default function ConcertSilhouettes() {
     const { audio, config } = getReactiveVisualState(visualConfig, useVibeStore.getState().musicProfile?.bpm);
     const minimalFactor = config.preset === 'minimal' ? 0.22 : config.preset === 'club' ? 0.6 : 0.85;
     const coneScale = 1 + audio.bass * 0.12 * config.reactivity.bassToBloom + (audio.kick ? 0.05 : 0);
-    const speakerSpeed = 3.5 + config.tunnel.speed * 2.8 + audio.energy * 5;
+    const speakerSpeed = bpmAnchoredSpeed(audio.bpm, config.tunnel.speed * 0.5, 1) + audio.energy * 2;
 
     speakerRefs.current.forEach((speaker, idx) => {
       speaker.position.z += speakerSpeed * delta;
