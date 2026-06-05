@@ -13,6 +13,8 @@ export type AudioFeatures = {
   bpm: number;
   time: number;
   beatIndex: number;
+  beatPhase: number;
+  bpmConfidence: number;
   vibeState: VibeState;
 };
 
@@ -49,9 +51,11 @@ export function getSmoothedAudioFeatures(raw: GlobalAudioData, bpm = 128): Audio
     beat: raw.hasBeatThisFrame,
     kick: raw.hasKickThisFrame,
     beatStrength,
-    bpm,
+    bpm: raw.bpm > 0 ? raw.bpm : bpm,
     time: raw.currentTime,
     beatIndex: raw.beatIndex,
+    beatPhase: raw.beatPhase,
+    bpmConfidence: raw.bpmConfidence,
     vibeState: vibeStateForEnergy(smoothed.energy),
   };
 }
