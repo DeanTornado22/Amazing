@@ -1,80 +1,33 @@
-import { useState, useRef } from 'react';
-import type { ChangeEvent, DragEvent } from 'react';
-import { useVibeStore } from './store/useVibeStore';
-import type { ThemeId } from './audio/types';
-import { audioEngine } from './audio/AudioEngine';
-import { analyzeAudioFile } from './audio/vibeEngine';
-import { configFromVibe } from './visual/configFromVibe';
-import type { VisualConfig } from './visual/VisualConfig';
-import type { VisualPresetId } from './visual/VisualConfig';
-import { applyVisualPreset } from './visual/visualPresets';
-import VibeCanvas from './scene/VibeCanvas';
-import MetricsPanel from './ui/MetricsPanel';
-import './app/styles.css';
+import { useEffect, useState, useRef, Suspense, lazy } from "react";
+import type { ChangeEvent, DragEvent } from "react";
+import { useVibeStore } from "./store/useVibeStore";
+import { audioEngine, currentAudioData } from "./audio/AudioEngine";
+import { beatSurpriseState } from "./audio/beatSurpriseState";
+import { sectionTracker } from "./audio/sectionTracker";
+import type { SectionId } from "./audio/sectionTracker";
+import { analyzeAudioFile } from "./audio/vibeEngine";
+import { configFromVibe } from "./visual/configFromVibe";
+import type { VisualConfig } from "./visual/VisualConfig";
+import type { VisualPresetId } from "./visual/VisualConfig";
+import { applyVisualPreset } from "./visual/visualPresets";
+import { THEME_DETAILS, isAcceptedAudioFile } from "./utils/themeDetails";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useAutoHide } from "./hooks/useAutoHide";
+import ErrorBoundary from "./ui/ErrorBoundary";
+import LiveHUD from "./ui/LiveHUD";
+import WaveformPanel from "./ui/WaveformPanel";
+import TunerPanel from "./ui/TunerPanel";
+import ShortcutHelp from "./ui/ShortcutHelp";
+import SeekAndVolume from "./ui/SeekAndVolume";
+import DebugOverlay from "./ui/DebugOverlay";
+import { safeSetJSON } from "./utils/safeLocalStorage";
+import "./app/styles.css";
 
-type SliderProps = {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (value: number) => void;
-};
+// Lazy-load the heavy 3D canvas so the upload screen ships without
+// pulling in Three.js, R3F, postprocessing, and GSAP.
+const VibeCanvas = lazy(() => import("./scene/VibeCanvas"));
 
-type ColorProps = {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-};
-
-type TunnelNumberKey = Exclude<keyof VisualConfig['tunnel'], 'shape'>;
-type CameraNumberKey = keyof VisualConfig['camera'];
-type ParticleNumberKey = keyof VisualConfig['particles'];
-type FloorNumberKey = Exclude<keyof VisualConfig['floor'], 'kickFlashColor'>;
-type LaserNumberKey = keyof VisualConfig['lasers'];
-type PostFxNumberKey = keyof VisualConfig['postfx'];
-type ReactivityNumberKey = keyof VisualConfig['reactivity'];
-
-function SliderControl({ label, value, min, max, step, onChange }: SliderProps) {
-  return (
-    <label className="tuner-control">
-      <span className="tuner-control__head">
-        <span>{label}</span>
-        <span>{Number.isInteger(step) ? Math.round(value) : value.toFixed(2)}</span>
-      </span>
-      <span className="tuner-control__row">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-        />
-        <input
-          type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={Number.isInteger(step) ? Math.round(value) : Number(value.toFixed(2))}
-          onChange={(e) => onChange(Number(e.target.value))}
-        />
-      </span>
-    </label>
-  );
-}
-
-function ColorControl({ label, value, onChange }: ColorProps) {
-  return (
-    <label className="tuner-color">
-      <span>{label}</span>
-      <span className="tuner-color__row">
-        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
-        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} />
-      </span>
-    </label>
-  );
-}
+const PERSIST_KEY = "vibetunnel:visualConfig:v2";
 
 export default function App() {
   const {
@@ -86,6 +39,14 @@ export default function App() {
     bpmOverrideActive,
     isAnalyzing,
     analysisStage,
+    tapProgress,
+    liveBpm,
+    bpmLocked,
+    photosensitiveMode,
+    isRecording,
+    autoPreset,
+    showDebug,
+    showShortcutHelp,
     setFileName,
     setIsPlaying,
     setMusicProfile,
@@ -94,6 +55,13 @@ export default function App() {
     setBpmOverrideActive,
     setIsAnalyzing,
     setAnalysisStage,
+    setTapProgress,
+    setLiveBpm,
+    setBpmLocked,
+    setPhotosensitiveMode,
+    setIsRecording,
+    setShowDebug,
+    setShowShortcutHelp,
     reset,
   } = useVibeStore();
 
@@ -103,60 +71,40 @@ export default function App() {
   const [showTunnel, setShowTunnel] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showTuner, setShowTuner] = useState(false);
+  const [currentSection, setCurrentSection] = useState<SectionId>("intro");
+  const [barsInSection, setBarsInSection] = useState(0);
+  // HUD chrome: back button stays always-visible. Everything else auto-hides.
+  const [hudCollapsed, setHudCollapsed] = useState(true);
+  const [waveformVisible, setWaveformVisible] = useState(false);
+  const [hudForced, setHudForced] = useState(false); // `H` key toggles
+  const hud = useAutoHide({ visibleMs: 2200, enabled: !hudForced });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Mappings for theme details
-  const themeDetails: Record<ThemeId, { name: string; colors: string[]; moods: string[] }> = {
-    'brazilian-phonk': {
-      name: 'Brazilian Phonk Dark Concert',
-      colors: ['#ff1ac6', '#00e5ff', '#39ff14'],
-      moods: ['aggressive', 'dark', 'fast', 'chaotic'],
-    },
-    'dead-disco': {
-      name: 'Dead Disco Club',
-      colors: ['#c77dff', '#ffd166', '#00f5d4'],
-      moods: ['groovy', 'spooky', 'stylish', 'dancefloor'],
-    },
-    'cyber-runner': {
-      name: 'Cyber Runner',
-      colors: ['#00e5ff', '#0066ff', '#ffffff'],
-      moods: ['futuristic', 'clean', 'laser', 'high-speed'],
-    },
-    'dark-bass': {
-      name: 'Dark Bass Ritual',
-      colors: ['#ff0033', '#6d00ff', '#ff7a00'],
-      moods: ['heavy', 'underground', 'ritual', 'smoky'],
-    },
-    'dream-neon': {
-      name: 'Dream Neon Drift',
-      colors: ['#80ffdb', '#b8c0ff', '#ffafcc'],
-      moods: ['floaty', 'emotional', 'smooth', 'dreamy'],
-    },
+  // Derived: is the HUD currently visible to the user?
+  const isHudVisible = hudForced || hud.visible;
+
+  const validateAndSetFile = (file: File) => {
+    setErrorMsg(null);
+    if (isAcceptedAudioFile(file)) {
+      setSelectedFile(file);
+      setFileName(file.name);
+    } else {
+      setErrorMsg(
+        "Please upload a valid audio file (MP3, WAV, M4A, AAC, OGG, or FLAC).",
+      );
+      setSelectedFile(null);
+      setFileName(null);
+    }
   };
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
+    if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive(true);
-    } else if (e.type === 'dragleave') {
+    } else if (e.type === "dragleave") {
       setDragActive(false);
-    }
-  };
-
-  const validateAndSetFile = (file: File) => {
-    setErrorMsg(null);
-    const validTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav'];
-    const fileExt = file.name.split('.').pop()?.toLowerCase();
-    
-    if (validTypes.includes(file.type) || ['mp3', 'wav'].includes(fileExt || '')) {
-      setSelectedFile(file);
-      setFileName(file.name);
-    } else {
-      setErrorMsg('Please upload a valid MP3 or WAV file.');
-      setSelectedFile(null);
-      setFileName(null);
     }
   };
 
@@ -164,7 +112,6 @@ export default function App() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       validateAndSetFile(e.dataTransfer.files[0]);
     }
@@ -188,31 +135,33 @@ export default function App() {
     setErrorMsg(null);
 
     try {
-      // Run browser decoding & peak analysis
-      const profile = await analyzeAudioFile(selectedFile, (stage, progress) => {
-        setAnalysisStage(stage);
-        setAnalysisProgress(progress);
-      });
+      const profile = await analyzeAudioFile(
+        selectedFile,
+        (stage, progress) => {
+          setAnalysisStage(stage);
+          setAnalysisProgress(progress);
+        },
+      );
 
-      // Handle override
       if (bpmOverrideActive) {
         profile.bpm = manualBpm;
       } else {
         setManualBpm(profile.bpm);
       }
 
-      // Configure playback structures
       const config = configFromVibe(profile);
 
-      // Load file into Web Audio play source
       await audioEngine.loadFile(selectedFile);
       audioEngine.setBpm(profile.bpm);
+      audioEngine.setDetectedBpm(profile.bpm);
 
       setMusicProfile(profile);
       setVisualConfig(config);
     } catch (err) {
       console.error(err);
-      setErrorMsg('Error processing audio file. Make sure it is not corrupted.');
+      setErrorMsg(
+        "Error processing audio file. Make sure it is not corrupted.",
+      );
     } finally {
       setIsAnalyzing(false);
       setAnalysisStage(null);
@@ -223,7 +172,7 @@ export default function App() {
     setShowTunnel(true);
     setIsPlaying(true);
     audioEngine.play().catch((err) => {
-      console.error('Audio play failed:', err);
+      console.error("Audio play failed:", err);
       setIsPlaying(false);
     });
   };
@@ -243,139 +192,143 @@ export default function App() {
     setIsPlaying(!audioEngine.isPaused());
   };
 
+  const handleToggleRecord = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      window.dispatchEvent(new CustomEvent("vibetunnel:stop-record"));
+    } else {
+      setIsRecording(true);
+      window.dispatchEvent(new CustomEvent("vibetunnel:start-record"));
+    }
+  };
+
+  const handleTogglePhotosensitive = () => {
+    setPhotosensitiveMode(!photosensitiveMode);
+  };
+
+  const handleTap = () => {
+    const t = currentAudioData.currentTime;
+    const now = performance.now() / 1000;
+    const result = audioEngine.tap(t, now);
+    if (result) {
+      setManualBpm(result.bpm);
+      setLiveBpm(result.bpm);
+      const next = Math.min(4, tapProgress + 1);
+      setTapProgress(next);
+      if (next >= 4) setBpmLocked(true);
+    } else {
+      setTapProgress(1);
+    }
+  };
+
+  const handleNudge = (deltaMs: number) => {
+    audioEngine.nudgeBeatOrigin(deltaMs);
+  };
+
   const updateVisual = (updater: (config: VisualConfig) => VisualConfig) => {
     if (!visualConfig) return;
-    setVisualConfig(updater(visualConfig));
-  };
-
-  const updatePalette = (key: keyof VisualConfig['palette'], value: string) => {
-    updateVisual((config) => ({
-      ...config,
-      palette: {
-        ...config.palette,
-        [key]: value,
-      },
-    }));
-  };
-
-  const updateTunnelNumber = (key: TunnelNumberKey, value: number) => {
-    updateVisual((config) => ({
-      ...config,
-      tunnel: {
-        ...config.tunnel,
-        [key]: value,
-      },
-    }));
-  };
-
-  const updateTunnelPulse = (value: number) => {
-    updateVisual((config) => ({
-      ...config,
-      tunnel: {
-        ...config.tunnel,
-        pulseScale: value,
-        pulseStrength: value,
-      },
-    }));
-  };
-
-  const updateTunnelShape = (shape: VisualConfig['tunnel']['shape']) => {
-    updateVisual((config) => ({
-      ...config,
-      tunnel: {
-        ...config.tunnel,
-        shape,
-      },
-    }));
-  };
-
-  const updateCameraNumber = (key: CameraNumberKey, value: number) => {
-    updateVisual((config) => ({
-      ...config,
-      camera: {
-        ...config.camera,
-        [key]: value,
-      },
-    }));
-  };
-
-  const updateParticleNumber = (key: ParticleNumberKey, value: number) => {
-    updateVisual((config) => ({
-      ...config,
-      particles: {
-        ...config.particles,
-        [key]: value,
-      },
-    }));
-  };
-
-  const updateFloorNumber = (key: FloorNumberKey, value: number) => {
-    updateVisual((config) => ({
-      ...config,
-      floor: {
-        ...config.floor,
-        [key]: value,
-      },
-    }));
-  };
-
-  const updateLaserNumber = (key: LaserNumberKey, value: number) => {
-    updateVisual((config) => ({
-      ...config,
-      lasers: {
-        ...config.lasers,
-        [key]: value,
-      },
-    }));
-  };
-
-  const updatePostFxNumber = (key: PostFxNumberKey, value: number) => {
-    updateVisual((config) => ({
-      ...config,
-      postfx: {
-        ...config.postfx,
-        [key]: value,
-      },
-    }));
-  };
-
-  const updateReactivityNumber = (key: ReactivityNumberKey, value: number) => {
-    updateVisual((config) => ({
-      ...config,
-      reactivity: {
-        ...config.reactivity,
-        [key]: value,
-      },
-    }));
-  };
-
-  const updatePreset = (preset: VisualPresetId) => {
-    updateVisual((config) => applyVisualPreset(config, preset));
+    const next = updater(visualConfig);
+    setVisualConfig(next);
+    safeSetJSON(PERSIST_KEY, next);
   };
 
   const resetVisualConfig = () => {
     if (!musicProfile) return;
-    setVisualConfig(configFromVibe(musicProfile));
+    const next = configFromVibe(musicProfile);
+    setVisualConfig(next);
+    safeSetJSON(PERSIST_KEY, next);
   };
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const id = window.setInterval(() => {
+      const bpm = currentAudioData.bpm;
+      if (bpm > 0) setLiveBpm(Math.round(bpm));
+      setBpmLocked(currentAudioData.bpmConfidence >= 1);
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [isPlaying, setLiveBpm, setBpmLocked]);
+
+  useEffect(() => {
+    beatSurpriseState.safetyScale = photosensitiveMode ? 0.3 : 1;
+  }, [photosensitiveMode]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const id = window.setInterval(() => {
+      const next = sectionTracker.state.section;
+      if (next !== currentSection) {
+        setCurrentSection(next);
+        if (autoPreset && visualConfig) {
+          const target: VisualPresetId =
+            next === "drop" || next === "chorus"
+              ? "intense"
+              : next === "build"
+                ? "club"
+                : next === "intro" || next === "breakdown" || next === "outro"
+                  ? "minimal"
+                  : "club";
+          if (target !== visualConfig.preset) {
+            setVisualConfig(applyVisualPreset(visualConfig, target));
+          }
+        }
+      }
+      setBarsInSection(sectionTracker.state.barsInSection);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [isPlaying, currentSection, autoPreset, visualConfig, setVisualConfig]);
+
+  // Keyboard shortcuts: space=play/pause, T=tuner, M=mute, D=debug, ?=help,
+  // ← →=nudge, H=force HUD, W=toggle waveform panel.
+  useKeyboardShortcuts({
+    space: handlePlayPause,
+    t: () => setShowTuner((v) => !v),
+    m: () => audioEngine.setVolume(audioEngine.getVolume() > 0 ? 0 : 0.8),
+    d: () => setShowDebug(!showDebug),
+    "?": () => setShowShortcutHelp(!showShortcutHelp),
+    h: () => setHudForced((v) => !v),
+    w: () => setWaveformVisible((v) => !v),
+    escape: () => {
+      setShowTuner(false);
+      setShowShortcutHelp(false);
+    },
+    arrowleft: () => handleNudge(-20),
+    arrowright: () => handleNudge(20),
+  });
 
   return (
     <div className="app-container">
-      <div className="bg-grid"></div>
+      <div className="bg-grid" />
 
-      {/* Main R3F Canvas mounting section */}
-      <div 
-        className="canvas-container" 
-        style={{ 
-          background: visualConfig?.palette.background || '#030108',
+      <div
+        className="canvas-container"
+        style={{
+          background: visualConfig?.palette.background || "#000000",
           opacity: showTunnel ? 1 : 0,
-          transition: 'opacity 1s ease',
-          pointerEvents: showTunnel ? 'auto' : 'none'
+          transition: "opacity 1s ease",
+          pointerEvents: showTunnel ? "auto" : "none",
         }}
       >
-        {showTunnel && <VibeCanvas />}
+        {showTunnel && (
+          <ErrorBoundary>
+            <Suspense
+              fallback={
+                <div className="canvas-loading">
+                  <div className="canvas-loading__spinner" />
+                  <div className="canvas-loading__text">
+                    Loading visualizer…
+                  </div>
+                </div>
+              }
+            >
+              <VibeCanvas />
+            </Suspense>
+          </ErrorBoundary>
+        )}
       </div>
 
-      {/* Setup Glass Panel Dashboard */}
+      <DebugOverlay visible={showDebug && showTunnel} />
+
       {!showTunnel && (
         <div className="glass-panel">
           <h1 className="title">VibeTunnel</h1>
@@ -383,19 +336,19 @@ export default function App() {
 
           {!musicProfile && !isAnalyzing && (
             <>
-              <div 
-                className={`upload-zone ${dragActive ? 'drag-active' : ''}`}
+              <div
+                className={`upload-zone ${dragActive ? "drag-active" : ""}`}
                 onDragEnter={handleDrag}
                 onDragOver={handleDrag}
                 onDragLeave={handleDrag}
                 onDrop={handleDrop}
                 onClick={onButtonClick}
               >
-                <input 
+                <input
                   ref={fileInputRef}
                   type="file"
-                  style={{ display: 'none' }}
-                  accept=".mp3,.wav"
+                  style={{ display: "none" }}
+                  accept=".mp3,.wav,.m4a,.aac,.ogg,.flac,.oga,.opus"
                   onChange={handleChange}
                 />
                 <div className="upload-icon">🎵</div>
@@ -403,12 +356,22 @@ export default function App() {
                   {fileName ? (
                     <span className="file-name">{fileName}</span>
                   ) : (
-                    'Drag and drop an MP3/WAV here, or click to browse'
+                    "Drag and drop an audio file, or click to browse"
                   )}
                 </div>
               </div>
 
-              {errorMsg && <p style={{ color: '#ff4d6d', fontSize: '0.85rem', marginBottom: '1.5rem' }}>{errorMsg}</p>}
+              {errorMsg && (
+                <p
+                  style={{
+                    color: "#ff4d6d",
+                    fontSize: "0.85rem",
+                    marginBottom: "1.5rem",
+                  }}
+                >
+                  {errorMsg}
+                </p>
+              )}
 
               <div className="controls-row">
                 <div className="input-group">
@@ -417,24 +380,43 @@ export default function App() {
                     type="number"
                     className="number-input"
                     value={manualBpm}
-                    onChange={(e) => setManualBpm(parseInt(e.target.value) || 128)}
+                    onChange={(e) =>
+                      setManualBpm(parseInt(e.target.value) || 120)
+                    }
                     disabled={!bpmOverrideActive}
                   />
                 </div>
-                <div className="input-group" style={{ flex: '0 0 auto', flexDirection: 'row', gap: '0.5rem', marginTop: '1.5rem' }}>
+                <div
+                  className="input-group"
+                  style={{
+                    flex: "0 0 auto",
+                    flexDirection: "row",
+                    gap: "0.5rem",
+                    marginTop: "1.5rem",
+                  }}
+                >
                   <input
                     type="checkbox"
                     id="bpmOverride"
                     checked={bpmOverrideActive}
                     onChange={(e) => setBpmOverrideActive(e.target.checked)}
-                    style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                    style={{ cursor: "pointer", width: "18px", height: "18px" }}
                   />
-                  <label htmlFor="bpmOverride" style={{ fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}>Use manual BPM</label>
+                  <label
+                    htmlFor="bpmOverride"
+                    style={{
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      userSelect: "none",
+                    }}
+                  >
+                    Use manual BPM
+                  </label>
                 </div>
               </div>
 
-              <button 
-                className="btn-primary" 
+              <button
+                className="btn-primary"
                 disabled={!selectedFile}
                 onClick={startAnalysis}
               >
@@ -447,17 +429,30 @@ export default function App() {
             <div className="loading-container">
               <div className="loading-stage">{analysisStage}</div>
               <div className="loading-bar-outer">
-                <div className="loading-bar-inner" style={{ width: `${analysisProgress}%` }}></div>
+                <div
+                  className="loading-bar-inner"
+                  style={{ width: `${analysisProgress}%` }}
+                />
               </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Analyzing musical features...</p>
+              <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                Analyzing musical features...
+              </p>
             </div>
           )}
 
           {musicProfile && !isAnalyzing && (
             <div className="vibe-result-card">
               <div className="result-header">
-                <span className="result-theme">{themeDetails[musicProfile.themeGuess].name}</span>
-                <span className="metric-val" style={{ color: 'var(--primary-glow)', textShadow: '0 0 5px rgba(255,0,170,0.3)' }}>
+                <span className="result-theme">
+                  {THEME_DETAILS[musicProfile.themeGuess].name}
+                </span>
+                <span
+                  className="metric-val"
+                  style={{
+                    color: "var(--primary-glow)",
+                    textShadow: "0 0 5px rgba(255,0,170,0.3)",
+                  }}
+                >
                   {musicProfile.bpm} BPM
                 </span>
               </div>
@@ -465,19 +460,27 @@ export default function App() {
               <div className="metric-grid">
                 <div className="metric-item">
                   <div className="metric-title">Energy</div>
-                  <div className="metric-val">{Math.round(musicProfile.energy * 100)}%</div>
+                  <div className="metric-val">
+                    {Math.round(musicProfile.energy * 100)}%
+                  </div>
                 </div>
                 <div className="metric-item">
                   <div className="metric-title">Bass response</div>
-                  <div className="metric-val">{Math.round(musicProfile.bass * 100)}%</div>
+                  <div className="metric-val">
+                    {Math.round(musicProfile.bass * 100)}%
+                  </div>
                 </div>
                 <div className="metric-item">
                   <div className="metric-title">Treble/Brightness</div>
-                  <div className="metric-val">{Math.round(musicProfile.treble * 100)}%</div>
+                  <div className="metric-val">
+                    {Math.round(musicProfile.treble * 100)}%
+                  </div>
                 </div>
                 <div className="metric-item">
                   <div className="metric-title">Rhythm Density</div>
-                  <div className="metric-val">{Math.round(musicProfile.density * 100)}%</div>
+                  <div className="metric-val">
+                    {Math.round(musicProfile.density * 100)}%
+                  </div>
                 </div>
               </div>
 
@@ -485,7 +488,9 @@ export default function App() {
                 <div className="metric-title">Detected Moods</div>
                 <div className="mood-tags">
                   {musicProfile.moodTags.map((mood) => (
-                    <span key={mood} className="mood-tag">{mood}</span>
+                    <span key={mood} className="mood-tag">
+                      {mood}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -493,19 +498,29 @@ export default function App() {
               <div>
                 <div className="metric-title">Visual Swatches</div>
                 <div className="swatches">
-                  {themeDetails[musicProfile.themeGuess].colors.map((color, idx) => (
-                    <div 
-                      key={idx} 
-                      className="swatch" 
-                      style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }}
-                    />
-                  ))}
+                  {THEME_DETAILS[musicProfile.themeGuess].colors.map(
+                    (color, idx) => (
+                      <div
+                        key={idx}
+                        className="swatch"
+                        style={{
+                          backgroundColor: color,
+                          boxShadow: `0 0 8px ${color}`,
+                        }}
+                      />
+                    ),
+                  )}
                 </div>
               </div>
 
-              <button 
-                className="btn-primary" 
-                style={{ marginTop: '1.5rem', background: 'linear-gradient(135deg, var(--secondary-glow) 0%, var(--primary-glow) 100%)', boxShadow: '0 4px 15px rgba(0,245,212,0.3)' }}
+              <button
+                className="btn-primary"
+                style={{
+                  marginTop: "1.5rem",
+                  background:
+                    "linear-gradient(135deg, var(--secondary-glow) 0%, var(--primary-glow) 100%)",
+                  boxShadow: "0 4px 15px rgba(0,245,212,0.3)",
+                }}
                 onClick={handleEnterTunnel}
               >
                 Enter Visual Tunnel
@@ -515,101 +530,127 @@ export default function App() {
         </div>
       )}
 
-      {/* Minimal HUD overlay inside Visual Tunnel */}
       {showTunnel && (
-        <div className="hud-overlay">
-          <div className="hud-header hud-item">
-            <button className="btn-back" onClick={handleBackToSetup}>← Back</button>
-            <div className="hud-theme-badge">
+        <div
+          className={`hud-overlay ${isHudVisible ? "" : "is-hidden"}`}
+          aria-hidden={!isHudVisible}
+        >
+          {/* Top row: back (left) | badge (center) | metrics (right) */}
+          <div className="hud-top-row">
+            <button
+              className="btn-back btn-back--always"
+              onClick={handleBackToSetup}
+            >
+              ← Back
+            </button>
+
+            <div
+              className={`hud-theme-badge ${isHudVisible ? "" : "is-fading"}`}
+            >
               {visualConfig?.themeName}
+              <span className="hud-section-pill" data-section={currentSection}>
+                {currentSection.toUpperCase()} · {barsInSection} BAR
+                {barsInSection === 1 ? "" : "S"}
+              </span>
             </div>
-            <MetricsPanel bpm={musicProfile?.bpm ?? manualBpm} isPlaying={isPlaying} />
+
+            <div
+              className={`hud-right-stack ${isHudVisible ? "" : "is-fading"}`}
+            >
+              <LiveHUD
+                bpm={liveBpm || (musicProfile?.bpm ?? manualBpm)}
+                bpmLocked={bpmLocked}
+                tapProgress={tapProgress}
+                isPlaying={isPlaying}
+                onTap={handleTap}
+                onNudge={handleNudge}
+                collapsed={hudCollapsed}
+                onToggleCollapsed={() => setHudCollapsed((v) => !v)}
+              />
+            </div>
           </div>
 
-          <div className="hud-controls hud-item">
-            <button className="btn-circle" onClick={handlePlayPause}>
-              {isPlaying ? '⏸' : '▶'}
+          {/* Central minimal control dock — tiny, auto-hides */}
+          <div
+            className={`hud-controls hud-controls--minimal ${
+              isHudVisible ? "" : "is-fading"
+            }`}
+          >
+            <button
+              className="btn-circle btn-circle--sm"
+              onClick={handlePlayPause}
+              aria-label={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? "⏸" : "▶"}
             </button>
-            <button className="btn-tuner" onClick={() => setShowTuner((open) => !open)}>
-              Tune
+            <button
+              className="btn-tuner btn-tuner--sm"
+              onClick={() => setShowTuner((open) => !open)}
+              title="Tune"
+            >
+              TUNE
             </button>
-            <button className="btn-tuner" onClick={handleBackToSetup}>
-              Upload
+            <button
+              className="btn-tuner btn-tuner--sm"
+              onClick={handleBackToSetup}
+              title="Upload a new song"
+            >
+              UP
+            </button>
+            <button
+              className={`btn-tuner btn-tuner--sm ${
+                isRecording ? "is-recording" : ""
+              }`}
+              onClick={handleToggleRecord}
+              title="Record"
+            >
+              {isRecording ? "■" : "●"}
+            </button>
+            <button
+              className={`btn-tuner btn-tuner--sm ${
+                photosensitiveMode ? "is-safe" : ""
+              }`}
+              onClick={handleTogglePhotosensitive}
+              title="Photosensitive mode"
+            >
+              {photosensitiveMode ? "✓" : "🛡"}
+            </button>
+            <button
+              className="btn-tuner btn-tuner--sm"
+              onClick={() => setShowShortcutHelp(true)}
+              title="Shortcuts (?)"
+            >
+              ?
             </button>
           </div>
+
+          {/* Bottom waveform panel — only when explicitly shown (W key) */}
+          {waveformVisible && (
+            <div className="hud-bottom">
+              <SeekAndVolume />
+              <WaveformPanel isPlaying={isPlaying} isRecording={isRecording} />
+            </div>
+          )}
 
           {showTuner && visualConfig && (
-            <div className="tuner-panel hud-item">
-              <div className="tuner-panel__header">
-                <div>
-                  <div className="tuner-title">Tune</div>
-                  <div className="tuner-subtitle">Minimal visual metrics</div>
-                </div>
-                <button className="tuner-close" onClick={() => setShowTuner(false)}>x</button>
-              </div>
-
-              <div className="tuner-section">
-                <div className="tuner-section__title">Preset</div>
-                <div className="preset-switch">
-                  {(['minimal', 'club', 'intense'] as VisualPresetId[]).map((preset) => (
-                    <button
-                      key={preset}
-                      className={`preset-switch__button ${visualConfig.preset === preset ? 'is-active' : ''}`}
-                      onClick={() => updatePreset(preset)}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="tuner-section">
-                <div className="tuner-section__title">Core Motion</div>
-                <label className="tuner-select">
-                  <span>Shape</span>
-                  <select value={visualConfig.tunnel.shape} onChange={(e) => updateTunnelShape(e.target.value as VisualConfig['tunnel']['shape'])}>
-                    <option value="circle">Circle</option>
-                    <option value="rect">Rect</option>
-                    <option value="triangle">Triangle</option>
-                    <option value="mixed">Mixed</option>
-                  </select>
-                </label>
-                <SliderControl label="Tunnel speed" value={visualConfig.tunnel.speed} min={0.2} max={2.4} step={0.05} onChange={(value) => updateTunnelNumber('speed', value)} />
-                <SliderControl label="Bass pulse" value={visualConfig.tunnel.pulseStrength} min={0} max={0.28} step={0.01} onChange={updateTunnelPulse} />
-                <SliderControl label="Frame density" value={visualConfig.tunnel.frameCount} min={18} max={52} step={1} onChange={(value) => updateTunnelNumber('frameCount', value)} />
-              </div>
-
-              <div className="tuner-section">
-                <div className="tuner-section__title">Scene Intensity</div>
-                <SliderControl label="Bloom strength" value={visualConfig.postfx.bloomStrength} min={0.2} max={0.9} step={0.01} onChange={(value) => updatePostFxNumber('bloomStrength', value)} />
-                <SliderControl label="Floor brightness" value={visualConfig.floor.brightness} min={0.05} max={0.9} step={0.01} onChange={(value) => updateFloorNumber('brightness', value)} />
-                <SliderControl label="Particle amount" value={visualConfig.particles.count} min={80} max={900} step={20} onChange={(value) => updateParticleNumber('count', value)} />
-                <SliderControl label="Laser opacity" value={visualConfig.lasers.opacity} min={0} max={0.5} step={0.01} onChange={(value) => updateLaserNumber('opacity', value)} />
-                <SliderControl label="Camera shake" value={visualConfig.camera.shake} min={0} max={0.18} step={0.005} onChange={(value) => updateCameraNumber('shake', value)} />
-              </div>
-
-              <div className="tuner-section">
-                <div className="tuner-section__title">Palette</div>
-                <ColorControl label="Background" value={visualConfig.palette.background} onChange={(value) => updatePalette('background', value)} />
-                <ColorControl label="Tunnel neon" value={visualConfig.palette.primary} onChange={(value) => updatePalette('primary', value)} />
-                <ColorControl label="Accent neon" value={visualConfig.palette.secondary} onChange={(value) => updatePalette('secondary', value)} />
-              </div>
-
-              <div className="tuner-section">
-                <div className="tuner-section__title">Audio Links</div>
-                <SliderControl label="Energy -> speed" value={visualConfig.reactivity.energyToSpeed} min={0} max={2} step={0.05} onChange={(value) => updateReactivityNumber('energyToSpeed', value)} />
-                <SliderControl label="Bass -> pulse" value={visualConfig.reactivity.bassToPulse} min={0} max={2} step={0.05} onChange={(value) => updateReactivityNumber('bassToPulse', value)} />
-                <SliderControl label="Mids -> twist" value={visualConfig.reactivity.midsToTwist} min={0} max={2} step={0.05} onChange={(value) => updateReactivityNumber('midsToTwist', value)} />
-                <SliderControl label="Treble -> sparkle" value={visualConfig.reactivity.trebleToSparkle} min={0} max={2} step={0.05} onChange={(value) => updateReactivityNumber('trebleToSparkle', value)} />
-              </div>
-
-              <button className="tuner-reset" onClick={resetVisualConfig}>
-                Reset Minimal
-              </button>
-            </div>
+            <TunerPanel
+              config={visualConfig}
+              onClose={() => setShowTuner(false)}
+              onUpdate={updateVisual}
+              onReset={resetVisualConfig}
+            />
           )}
         </div>
       )}
+
+      {/* Tiny "press H for HUD" hint, only shown on the very first load */}
+      {showTunnel && !hudForced && !isHudVisible && (
+        <div className="hud-hint" aria-hidden>
+          <kbd>H</kbd> show controls · <kbd>W</kbd> show waveform
+        </div>
+      )}
+
+      <ShortcutHelp />
     </div>
   );
 }
